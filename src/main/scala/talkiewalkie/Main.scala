@@ -39,9 +39,9 @@ object Main extends IOApp {
         val receive: Pipe[IO, WebSocketFrame, Unit] = { in =>
           in.evalMap {
             case Text(txt, _) =>
-//              jawn.decode[Command](txt) match {
+              jawn.decode[Command](txt) match {
 //                case Right(txt) => {
-              SlashCommands.toCommand(txt) match {
+//              SlashCommands.toCommand(txt) match {
                 case Right(Talk(message)) =>
                   service.talk(handle, message)
                 case Right(RequestStick()) =>

@@ -1,3 +1,5 @@
+package talkiewalkie
+
 import org.latestbit.circe.adt.codec.JsonTaggedAdt
 
 enum Event derives JsonTaggedAdt.Encoder:

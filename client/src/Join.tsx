@@ -1,5 +1,6 @@
 import { Component, createSignal } from "solid-js";
 import { ActionButton } from "./ui/ActionButton";
+import { LogoUI } from "./ui/LogoUI";
 
 interface JoinProps {
   updateHandle: (handle: string) => void;
@@ -14,6 +15,7 @@ export const Join: Component<JoinProps> = ({ updateHandle }) => {
 
   return (
     <div class="flex flex-col items-center mb-10">
+      <LogoUI />
       <h3 class="font-bold text-xl mb-4">Join</h3>
       <div class="flex flex-col text-center gap-2">
         <b>Select a handle:</b>

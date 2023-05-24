@@ -18,5 +18,8 @@ lazy val root = project
       "io.circe" %% "circe-core" % circeVersion,
       "io.circe" %% "circe-generic" % circeVersion
     ),
-    libraryDependencies += "org.latestbit" %% "circe-tagged-adt-codec" % "0.10.1"
+    libraryDependencies += "org.latestbit" %% "circe-tagged-adt-codec" % "0.10.1",
+    libraryDependencies += "com.google.cloud" % "google-cloud-speech" % "4.12.0",
+    libraryDependencies += "ws.schild" % "jave-core" % "3.3.1",
+    libraryDependencies += "ws.schild" % "jave-nativebin-osx64" % "3.3.1"
   )

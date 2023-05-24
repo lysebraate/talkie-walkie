@@ -7,10 +7,18 @@ import fs2.concurrent.Topic
 import talkiewalkie.Command.*
 import talkiewalkie.Event.PickedUpStick
 
-case class Service(eventsTopic: Topic[IO, Event], cell: AtomicCell[IO, Option[String]]) {
+object Service {
+  def create: IO[Service] =
+    for {
+      eventsTopic <- Topic[IO, Event]
+      talkingStick <- AtomicCell[IO].empty[Option[String]]
+    } yield Service(eventsTopic, talkingStick)
+}
+
+case class Service(eventsTopic: Topic[IO, Event], talkingStick: AtomicCell[IO, Option[String]]) {
 
   def talk(handle: String, message: String): IO[Unit] =
-    cell
+    talkingStick
       .evalUpdateAndGet {
         case Some(holder) if holder == handle =>
           for {
@@ -30,7 +38,7 @@ case class Service(eventsTopic: Topic[IO, Event], cell: AtomicCell[IO, Option[St
   def requestStick(handle: String): IO[Unit] =
     for {
       _ <- IO.println(s"${handle} requested the stick...")
-      result <- cell.evalUpdateAndGet {
+      result <- talkingStick.evalUpdateAndGet {
         case None =>
           IO.pure(Option(handle)).flatMap(holder => eventsTopic.publish1(Event.PickedUpStick(handle)).as(holder))
         case Some(holder) =>

@@ -12,13 +12,13 @@ render(() => {
   const handleIsSet = () => handle() !== "";
 
   return (
-    <div>
+    <div class="mt-10">
       <Switch>
         <Match when={!handleIsSet()}>
           <Join updateHandle={setHandle} />
         </Match>
         <Match when={handleIsSet()}>
-          <App handle={handle()} />
+          <App handle={handle} setHandle={setHandle} />
         </Match>
       </Switch>
     </div>

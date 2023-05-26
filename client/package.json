@@ -27,8 +27,6 @@
     "@motionone/solid": "^10.15.4",
     "@solid-primitives/websocket": "^0.3.5",
     "lodash": "^4.17.21",
-    "optics-ts": "^2.4.0",
-    "pixi.js": "^7.0.5",
     "solid-js": "^1.5.1",
     "zod": "^3.21.4"
   }

@@ -1,37 +1,47 @@
-import { Component, createEffect, createSignal, For, Show } from "solid-js";
+import {
+  Accessor,
+  Component,
+  createEffect,
+  createSignal,
+  For,
+  Setter,
+  Show,
+} from "solid-js";
 import { LogoUI } from "./ui/LogoUI";
 import createWebsocket from "@solid-primitives/websocket";
 import { ActionButton } from "./ui/ActionButton";
 import { events } from "./Events";
+import { Character, CharacterType } from "./ui/Character";
+import { Message } from "./Message";
 
 interface AppProps {
-  handle: string;
+  handle: Accessor<string>;
+  setHandle: Setter<string>;
 }
 
-const App: Component<AppProps> = ({ handle }) => {
+const App: Component<AppProps> = ({ handle, setHandle }) => {
+  const [lastMessage, setLastMessage] = createSignal<Message>();
+  const [participants, setParticipants] = createSignal<Participant[]>([]);
+
   const [hasStick, setHasStick] = createSignal<boolean>(false);
   const [otherHasStick, setOtherHasStick] = createSignal<boolean>(false);
-  const [processing, setProcessing] = createSignal<boolean>(false);
-
-  const [messages, setMessages] = createSignal<
-    { handle: string; message: string }[]
-  >([]);
+  const [processingAudio, setProcessingAudio] = createSignal<boolean>(false);
 
   const eventDispatch = (text: string) => {
     const parsed = events.safeParse(JSON.parse(text));
     if (parsed.success) {
       switch (parsed.data.type) {
         case "Talked": {
-          const newMessage = {
+          const newMessage: Message = {
             handle: parsed.data.handle,
             message: parsed.data.message,
           };
-          setMessages([...messages(), newMessage]);
-          setProcessing(false);
+          setLastMessage(newMessage);
+          setProcessingAudio(false);
           break;
         }
         case "PickedUpStick": {
-          if (parsed.data.handle === handle) {
+          if (parsed.data.handle === handle()) {
             setHasStick(true);
           } else {
             setOtherHasStick(true);
@@ -41,6 +51,20 @@ const App: Component<AppProps> = ({ handle }) => {
         case "StickAvailable": {
           setHasStick(false);
           setOtherHasStick(false);
+          break;
+        }
+        case "Joined": {
+          setParticipants([...participants(), parsed.data.handle]);
+          break;
+        }
+        case "ExistingMembers": {
+          setParticipants(parsed.data.handles);
+          break;
+        }
+        case "Left": {
+          setParticipants(
+            participants().filter((p) => p.handle !== parsed.data.handle)
+          );
           break;
         }
         default: {
@@ -54,15 +78,22 @@ const App: Component<AppProps> = ({ handle }) => {
   };
 
   const [connect, disconnect, send, state] = createWebsocket(
-    `wss://<ip>:3456/ws/${handle}`,
+    `wss://<ip>/ws/${handle()}`,
     (msg) => eventDispatch(msg.data),
-    (msg) => console.error(msg),
+    (msg) => {
+      console.error(msg);
+      setHandle("");
+    },
     [],
     5,
     5000
   );
 
   connect();
+
+  setInterval(() => {
+    send(JSON.stringify({ type: "PhoneHome", handle: handle() }));
+  }, 5000);
 
   const requestStick = () => {
     send(JSON.stringify({ type: "RequestStick" }));
@@ -95,7 +126,7 @@ const App: Component<AppProps> = ({ handle }) => {
     mediaRecorder.addEventListener("stop", function () {
       const blob = new Blob(recordedChunks);
       send(blob); //wrong type from Solidjs websocket lib, we can send bytes
-      setProcessing(true);
+      setProcessingAudio(true);
       recordedChunks = [];
     });
     console.log("Done");
@@ -111,14 +142,37 @@ const App: Component<AppProps> = ({ handle }) => {
 
       <div class="flex flex-col gap-4">
         <div class="flex flex-col">
-          <For each={messages()}>
-            {(m) => (
-              <div class="flex gap-4">
-                <div class="font-bold">{m.handle}:</div>
-                <div>{m.message}</div>
-              </div>
-            )}
-          </For>
+          {lastMessage() !== undefined && (
+            <div class="flex gap-4 bg-white p-4 rounded-xl">
+              <h3 class="font-bold font-logo text-xl text-center mb-10">
+                {lastMessage()!.message}
+              </h3>
+            </div>
+          )}
+          <div class="flex grid gap-12 grid-cols-6">
+            <For each={participants()}>
+              {(member) => {
+                return (
+                  <>
+                    <Show when={lastMessage()?.handle === member.handle}>
+                      <Character
+                        handle={member.handle}
+                        characterType={member.character as CharacterType}
+                        lastSpoken={true}
+                      />
+                    </Show>
+                    <Show when={lastMessage()?.handle !== member.handle}>
+                      <Character
+                        handle={member.handle}
+                        characterType={member.character as CharacterType}
+                        lastSpoken={false}
+                      />
+                    </Show>
+                  </>
+                );
+              }}
+            </For>
+          </div>
         </div>
 
         <Show when={otherHasStick()}>
@@ -134,13 +188,17 @@ const App: Component<AppProps> = ({ handle }) => {
           <ActionButton onClick={requestStick} label="Request Stick" />
         </Show>
 
-        <Show when={hasStick() && processing()}>Sending your message</Show>
-
-        <Show when={hasStick() && !processing()}>
+        <Show when={hasStick() && !processingAudio()}>
           <h3 class="font-bold font-logo text-xl text-center mb-10">
             Recording...
           </h3>
           <ActionButton onClick={() => stopRecording()} label="Stop" />
+        </Show>
+
+        <Show when={hasStick() && processingAudio()}>
+          <h3 class="font-bold font-logo text-xl text-center mb-10">
+            Sending your message
+          </h3>
         </Show>
       </div>
     </div>

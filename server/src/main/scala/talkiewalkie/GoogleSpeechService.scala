@@ -25,8 +25,8 @@ object GoogleSpeechService {
         .setEncoding(AudioEncoding.LINEAR16)
         .setSampleRateHertz(44100)
         .setModel("latest_long")
-        //        .setLanguageCode("en-US")
-        .setLanguageCode("no-NO")
+        .setLanguageCode("en-US")
+//        .setLanguageCode("no-NO")
         //        .setLanguageCode("da-DK")
         .setProfanityFilter(true)
         .build

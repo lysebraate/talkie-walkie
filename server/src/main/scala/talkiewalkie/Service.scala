@@ -1,21 +1,44 @@
 package talkiewalkie
 
-import cats.effect.IO
+import cats.effect.{IO, Ref}
 import cats.effect.std.AtomicCell
 import fs2.Stream
 import fs2.concurrent.Topic
 import talkiewalkie.Command.*
 import talkiewalkie.Event.PickedUpStick
 
+import java.time.Instant
+
 object Service {
-  def create: IO[Service] =
+  def create(eventsTopic: Topic[IO, Event], handles: Ref[IO, List[(Participant, Instant)]]): IO[Service] =
     for {
-      eventsTopic <- Topic[IO, Event]
       talkingStick <- AtomicCell[IO].empty[Option[String]]
-    } yield Service(eventsTopic, talkingStick)
+    } yield Service(eventsTopic, talkingStick, handles)
 }
 
-case class Service(eventsTopic: Topic[IO, Event], talkingStick: AtomicCell[IO, Option[String]]) {
+case class Service(
+    eventsTopic: Topic[IO, Event],
+    talkingStick: AtomicCell[IO, Option[String]],
+    participants: Ref[IO, List[(Participant, Instant)]]
+) {
+
+  def join(handle: String): IO[Participant] = for {
+    now <- IO.delay(Instant.now)
+    result <- participants.updateAndGet(handles => handles :+ (Participant(handle, handles.size + 1), now))
+    participant = result.last
+    _ <- eventsTopic.publish1(Event.Joined(participant._1))
+  } yield participant._1
+
+  def phonedHome(handle: String): IO[Unit] = for {
+    now <- IO.delay(Instant.now)
+    _ <- participants.update(participantList =>
+      participantList.map {
+        case (p, _) if p.handle == handle => (p, now)
+        case rest                         => rest
+      }
+    )
+  } yield ()
+  def members(): IO[List[Participant]] = participants.get.map(p => p.map(_._1))
 
   def talk(handle: String, message: String): IO[Unit] =
     talkingStick
